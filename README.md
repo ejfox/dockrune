@@ -2,14 +2,37 @@
 
 self-hosted deployment daemon. receives github webhooks, deploys your stuff.
 
-## what
+## for who
 
-dockrune is a lightweight deployment automation tool that:
-- listens for github webhooks
-- auto-detects project types (docker, go, rust, node, python, static)
-- builds and deploys with zero config
-- provides real-time status via websocket
-- exposes openapi spec at `/openapi.json`
+you have a $5 vps. you want to deploy your side projects to it. you don't want to ssh in and pull manually. you don't want a paas, kubernetes, yaml files, or a web ui you'll never use.
+
+you want: push to github → deployed to server. that's it.
+
+## the problem
+
+existing solutions assume you want complexity:
+- enterprise platforms that need 4gb ram just to idle
+- "simplified" tools that still require learning their special config format
+- managed services that cost 10x your vps
+- solutions that replace your entire workflow instead of enhancing it
+
+## how dockrune is different
+
+```bash
+# installation
+wget binary && ./dockrune init
+
+# configuration  
+none. it reads your code and figures it out.
+
+# resource usage
+~50mb ram. your apps use what they use.
+
+# mental overhead
+zero. push code, get deployment.
+```
+
+dockrune does exactly one thing: when github sends a webhook, it deploys your code. no more, no less.
 
 ## alternatives
 
