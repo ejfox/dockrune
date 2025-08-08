@@ -11,6 +11,26 @@ dockrune is a lightweight deployment automation tool that:
 - provides real-time status via websocket
 - exposes openapi spec at `/openapi.json`
 
+## alternatives
+
+| project | hosting | complexity | languages | config | vibe |
+|---------|---------|------------|-----------|--------|------|
+| **dockrune** | self-hosted | minimal | go | zero | unix philosophy |
+| [dokku](https://dokku.com) | self-hosted | medium | bash/go | buildpacks | heroku-like paas |
+| [coolify](https://coolify.io) | self-hosted | high | php/vue | gui-heavy | all-in-one platform |
+| [caprover](https://caprover.com) | self-hosted | medium | node | gui-based | docker swarm |
+| [waypoint](https://www.waypointproject.io) | self/cloud | high | go | hcl files | hashicorp ecosystem |
+| [render](https://render.com) | managed | low | - | yaml/gui | vercel competitor |
+| [railway](https://railway.app) | managed | low | - | gui | heroku successor |
+| [fly.io](https://fly.io) | managed | medium | - | toml | edge computing |
+
+**why dockrune?**
+- single binary, no dependencies
+- learns your project structure automatically
+- minimal resource usage (~50mb ram)
+- direct github integration, no git push deploy
+- you already have a vps, just use it
+
 ## quick start
 
 ```bash
