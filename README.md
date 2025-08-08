@@ -112,16 +112,65 @@ DISCORD_WEBHOOK_URL=      # optional alerts
 - openapi: `:8001/openapi.json`
 - deployments: `:8001/api/deployments` (jwt required)
 
-## project detection
+## zero config: how it works
 
-dockrune automatically detects and handles:
+dockrune looks at your code and knows what to do. no config files needed.
 
-- **docker**: `docker-compose.yml` or `Dockerfile`
-- **go**: `go.mod`
-- **rust**: `Cargo.toml`
-- **node**: `package.json`
-- **python**: `requirements.txt`
-- **static**: `index.html`
+### detection logic
+
+```bash
+# if it finds docker-compose.yml
+→ runs: docker-compose up -d
+
+# if it finds package.json
+→ runs: npm install && npm start
+
+# if it finds go.mod
+→ runs: go build && ./app
+
+# if it finds requirements.txt
+→ runs: pip install -r requirements.txt && python app.py
+```
+
+### real examples
+
+**node project:**
+```
+my-app/
+├── package.json     # detected: node project
+├── index.js         # entry point found
+└── src/            
+```
+dockrune runs: `npm install && npm start`
+
+**docker project:**
+```
+my-app/
+├── docker-compose.yml  # detected: docker compose
+├── Dockerfile         
+└── src/
+```
+dockrune runs: `docker-compose up -d`
+
+**static site:**
+```
+my-site/
+├── index.html      # detected: static files
+├── style.css      
+└── script.js
+```
+dockrune runs: `python -m http.server 8080`
+
+### override if needed
+
+don't like the defaults? add `.dockrune.yml`:
+```yaml
+build: make build
+start: ./bin/server --prod
+port: 9000
+```
+
+but most projects just work without it.
 
 ## architecture
 
