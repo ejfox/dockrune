@@ -1,93 +1,114 @@
-**dockrune: dev memo**
+# dockrune
 
-dockrune is a self-hosted deployment daemon designed to receive github webhooks, detect project types, and run appropriate deploy commands on a local vps. it supports status reporting via github’s deployments api, discord alerts through local services like coach artie, and custom automation via n8n.
+self-hosted deployment daemon. receives github webhooks, deploys your stuff.
 
-this document outlines dockrune’s intended functionality, architectural decisions, and acceptance criteria for development.
+## what
 
----
+dockrune is a lightweight deployment automation tool that:
+- listens for github webhooks
+- auto-detects project types (docker, go, rust, node, python, static)
+- builds and deploys with zero config
+- provides real-time status via websocket
+- exposes openapi spec at `/openapi.json`
 
-**primary goals**
+## quick start
 
-- enable push-to-deploy workflows from github to a docker-hosted vps
-- deploy multiple project types with minimal config (zero-config where possible)
-- support preview environments per feature branch or pr
-- maintain a simple but effective web ui to view deploy state, logs, and manage apps
-- report deploy status visibly in github (green/red on commits/prs)
-- alert developers of deploy errors via discord and optionally trigger n8n workflows
-- never require ssh from github into the server; always pull-based architecture
+```bash
+# get it
+git clone https://github.com/ejfox/dockrune
+cd dockrune
 
----
+# build it
+go build -o dockrune ./cmd/dockrune
 
-**core features**
+# configure it
+./dockrune init
 
-- webhook server receives github events (push, pull_request, etc)
-- deploy daemon inspects project contents and runs corresponding deploy process:
-  - docker projects: run docker-compose
-  - nuxt3 nitro apps: run output/server/index.mjs
-  - future support for static sites, custom commands, etc
+# run it
+./dockrune serve
+```
 
-- per-project .env file defines domain, port, optional metadata
-- status is posted back to github using the deployments api
-- logs are captured per deploy and can be viewed in the web ui
-- re-deploys can be triggered manually via web ui or api
-- deploy failures trigger alerts through discord (via coach artie) and/or n8n
-- metadata is tracked locally in a sqlite db or flat file store
-- project health and uptime are visualized in a minimal admin dashboard
+## docker
 
----
+```bash
+docker run -d \
+  -p 8000:8000 \
+  -p 8001:8001 \
+  -v /var/run/docker.sock:/var/run/docker.sock \
+  -v $(pwd)/data:/app/data \
+  -e GITHUB_WEBHOOK_SECRET=your-secret \
+  ejfox/dockrune
+```
 
-**web interface**
+## configure github
 
-- minimal, functional admin view available at /admin
-- displays:
-  - active apps
-  - last deploy sha and timestamp
-  - port + domain
-  - status (live, failing, stopped)
-  - log view per app
-  - buttons to redeploy or stop apps
+1. go to repo settings → webhooks
+2. add webhook:
+   - url: `https://your-server.com/webhook/github`
+   - content type: `application/json`
+   - secret: your webhook secret
+   - events: push, pull request
 
-- built with fastapi or express.js, templated html + optional rest api
+## env vars
 
----
+```bash
+GITHUB_WEBHOOK_SECRET=    # required
+ADMIN_USERNAME=admin      # default: admin
+ADMIN_PASSWORD=           # required
+JWT_SECRET=               # required
+DEPLOYMENT_DOMAIN=        # your domain
+GITHUB_TOKEN=             # for private repos
+DISCORD_WEBHOOK_URL=      # optional alerts
+```
 
-**alerting system**
+## api
 
-- configurable alert system on success/failure
-- alerts can be sent to:
-  - coach artie (discord bot with http endpoints)
-  - n8n (webhooks)
-  - github comments or status updates
+- webhook: `:8000/webhook/github`
+- health: `:8000/health`
+- admin: `:8001`
+- openapi: `:8001/openapi.json`
+- deployments: `:8001/api/deployments` (jwt required)
 
-- alert templates are customizable
-- alerts may include preview url, deploy sha, and short log summary
+## project detection
 
----
+dockrune automatically detects and handles:
 
-**acceptance criteria**
+- **docker**: `docker-compose.yml` or `Dockerfile`
+- **go**: `go.mod`
+- **rust**: `Cargo.toml`
+- **node**: `package.json`
+- **python**: `requirements.txt`
+- **static**: `index.html`
 
-- the daemon can receive a github webhook and deploy a docker project automatically
-- deploy status appears on the corresponding github commit/pr
-- a minimal admin dashboard lists all active apps and their deploy state
-- logs are accessible via the dashboard or api
-- failure alerts are sent to a test discord channel via coach artie
-- deploys can be manually re-triggered from the ui
-- the system can handle multiple simultaneous repos with separate ports/domains
-- no ssh access to the vps is required from github
-- setup can be performed with basic instructions and no third-party cloud services
+## architecture
 
----
+```
+github → webhook → detector → queue → deployer → [docker|pm2|binary]
+                                ↓
+                            storage ← admin api ← dashboard
+```
 
-**non-goals (for now)**
+## security
 
-- multi-tenant support
-- autoscaling
-- cloud provider integration
-- ui/ux polish beyond basic utility
-- database migrations or advanced data persistence
+- hmac webhook validation
+- jwt auth for admin api
+- command injection prevention
+- path traversal protection
+- non-root docker execution
 
----
+## development
 
-**dev notes**
+```bash
+# run tests
+go test ./...
 
-dockrune should feel closer to a well-crafted script than an over-engineered ci platform. the goal is total control, fast iteration, minimal surface area, and strong developer ergonomics. make it composable, inspectable, and a pleasure to use—even if it stays “ugly but honest.”
+# run dashboard dev
+cd dashboard && npm run dev
+
+# run smoke tests
+bash smoke_test.sh
+```
+
+## license
+
+mit

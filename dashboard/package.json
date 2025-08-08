@@ -1,0 +1,24 @@
+{
+  "name": "dockrune-dashboard",
+  "private": true,
+  "scripts": {
+    "build": "nuxt build",
+    "dev": "nuxt dev",
+    "generate": "nuxt generate",
+    "preview": "nuxt preview"
+  },
+  "devDependencies": {
+    "@nuxt/devtools": "latest",
+    "nuxt": "^3.9.0"
+  },
+  "dependencies": {
+    "@nuxtjs/tailwindcss": "^6.10.3",
+    "@pinia/nuxt": "^0.5.1",
+    "@vueuse/nuxt": "^10.7.1",
+    "apexcharts": "^3.45.1",
+    "vue3-apexcharts": "^1.5.2",
+    "dayjs": "^1.11.10",
+    "pinia": "^2.1.7",
+    "socket.io-client": "^4.6.0"
+  }
+}

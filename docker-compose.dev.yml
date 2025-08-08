@@ -1,0 +1,146 @@
+version: '3.8'
+
+# Development overrides for docker-compose.yml
+# Usage: docker-compose -f docker-compose.yml -f docker-compose.dev.yml up
+
+services:
+  # Traefik configuration for development
+  traefik:
+    ports:
+      - "8080:8080"  # Expose Traefik dashboard without auth in dev
+    environment:
+      - TRAEFIK_API_INSECURE=true  # Allow insecure dashboard access in dev
+      - TRAEFIK_LOG_LEVEL=DEBUG
+      - TRAEFIK_ACCESSLOG=true
+    labels:
+      # Remove auth requirement for dev
+      - traefik.http.routers.traefik.middlewares=
+
+  # Dockrune development configuration
+  dockrune:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: development  # Use development stage if added to Dockerfile
+    environment:
+      # Development settings
+      - DOCKRUNE_DEBUG=true
+      - DOCKRUNE_LOG_LEVEL=DEBUG
+      - NODE_ENV=development
+      - PYTHONUNBUFFERED=1
+      
+      # Use simpler auth for development
+      - ADMIN_USERNAME=admin
+      - ADMIN_PASSWORD_HASH=$2b$12$LBTj9A.dGZPE5A2gJ1GgqeGlJ8K5yF7zqg8QxYn5RmF7GHkKjGq5u  # password: admin
+      - JWT_SECRET=dev-jwt-secret-change-in-production
+      - GITHUB_WEBHOOK_SECRET=dev-webhook-secret
+      - DOCKRUNE_ADMIN_TOKEN=dev-admin-token
+      
+      # Development GitHub token (optional)
+      - DOCKRUNE_GITHUB_TOKEN=${DEV_GITHUB_TOKEN:-}
+      
+      # Faster deployment settings for testing
+      - DOCKRUNE_DEPLOY_TIMEOUT=300  # 5 minutes instead of 10
+      - DOCKRUNE_MAX_CONCURRENT_DEPLOYS=1  # Limit for dev machine
+    
+    volumes:
+      # Mount source code for live reload (Python/Node.js)
+      - .:/app:delegated
+      - /app/node_modules  # Exclude node_modules from bind mount
+      - dockrune-dev-data:/data
+      - dockrune-dev-logs:/logs
+      - /var/run/docker.sock:/var/run/docker.sock
+      
+    ports:
+      # Expose ports directly for debugging
+      - "8000:8000"  # FastAPI app
+      - "3000:3000"  # Node.js webhook server
+      
+    labels:
+      # Simple routing for development
+      - traefik.http.routers.dockrune.rule=Host(`dockrune.localhost`)
+      - traefik.http.routers.dockrune.entrypoints=web  # HTTP only in dev
+      - traefik.http.routers.dockrune.tls=
+      - traefik.http.routers.dockrune-webhook.rule=Host(`dockrune.localhost`) && PathPrefix(`/webhook`)
+      - traefik.http.routers.dockrune-webhook.entrypoints=web
+      - traefik.http.routers.dockrune-webhook.tls=
+      # Remove security headers and rate limiting for easier debugging
+      - traefik.http.routers.dockrune.middlewares=
+      - traefik.http.routers.dockrune-webhook.middlewares=
+    
+    # Override health check for development
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8000/ && curl -f http://localhost:3000/webhook/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    
+    # Override command for development with auto-reload
+    command: ["/scripts/docker-entrypoint.sh", "dev"]
+
+  # Development database browser (optional)
+  sqlite-web:
+    image: coleifer/sqlite-web
+    container_name: dockrune-sqlite-browser
+    ports:
+      - "8081:8080"
+    volumes:
+      - dockrune-dev-data:/data:ro
+    environment:
+      - SQLITE_DATABASE=/data/dockrune.db
+    networks:
+      - dockrune-network
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.sqlite.rule=Host(`sqlite.localhost`)
+      - traefik.http.routers.sqlite.entrypoints=web
+      - traefik.http.services.sqlite.loadbalancer.server.port=8080
+
+  # Disable backup service in development
+  backup:
+    deploy:
+      replicas: 0
+
+  # Optional: MailHog for testing email notifications
+  mailhog:
+    image: mailhog/mailhog:latest
+    container_name: dockrune-mailhog
+    ports:
+      - "1025:1025"  # SMTP
+      - "8025:8025"  # Web UI
+    networks:
+      - dockrune-network
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.mailhog.rule=Host(`mail.localhost`)
+      - traefik.http.routers.mailhog.entrypoints=web
+      - traefik.http.services.mailhog.loadbalancer.server.port=8025
+
+  # Development log viewer
+  dozzle:
+    image: amir20/dozzle:latest
+    container_name: dockrune-dozzle
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    ports:
+      - "9999:8080"
+    networks:
+      - dockrune-network
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.dozzle.rule=Host(`logs.localhost`)
+      - traefik.http.routers.dozzle.entrypoints=web
+      - traefik.http.services.dozzle.loadbalancer.server.port=8080
+
+volumes:
+  # Use separate volumes for development
+  dockrune-dev-data:
+    driver: local
+  dockrune-dev-logs:
+    driver: local
+
+# Development-specific network configuration
+networks:
+  dockrune-network:
+    driver: bridge

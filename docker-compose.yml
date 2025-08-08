@@ -1,0 +1,82 @@
+version: '3.8'
+
+services:
+  dockrune:
+    build: .
+    image: dockrune:latest
+    container_name: dockrune
+    restart: unless-stopped
+    ports:
+      - "8000:8000"  # Webhook server
+      - "8001:8001"  # Admin dashboard
+    environment:
+      - GITHUB_TOKEN=${GITHUB_TOKEN}
+      - GITHUB_WEBHOOK_SECRET=${GITHUB_WEBHOOK_SECRET}
+      - DISCORD_WEBHOOK_URL=${DISCORD_WEBHOOK_URL}
+      - N8N_WEBHOOK_URL=${N8N_WEBHOOK_URL}
+      - DATABASE_PATH=/app/data/dockrune.db
+      - REPOS_DIR=/app/repos
+      - LOGS_DIR=/app/logs
+      - ADMIN_USERNAME=${ADMIN_USERNAME:-admin}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD:-changeme}
+      - JWT_SECRET=${JWT_SECRET:-change-this-secret-key}
+      - DEPLOYMENT_DOMAIN=${DEPLOYMENT_DOMAIN:-localhost}
+    volumes:
+      - ./data:/app/data
+      - ./logs:/app/logs
+      - ./repos:/app/repos
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - dockrune-network
+      - deployments
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.dockrune-webhook.rule=Host(`dockrune.${DEPLOYMENT_DOMAIN}`) && PathPrefix(`/webhook`)"
+      - "traefik.http.routers.dockrune-webhook.entrypoints=websecure"
+      - "traefik.http.routers.dockrune-webhook.tls.certresolver=letsencrypt"
+      - "traefik.http.services.dockrune-webhook.loadbalancer.server.port=8000"
+      - "traefik.http.routers.dockrune-admin.rule=Host(`admin.dockrune.${DEPLOYMENT_DOMAIN}`)"
+      - "traefik.http.routers.dockrune-admin.entrypoints=websecure"
+      - "traefik.http.routers.dockrune-admin.tls.certresolver=letsencrypt"
+      - "traefik.http.services.dockrune-admin.loadbalancer.server.port=8001"
+
+  # Optional: Traefik reverse proxy for SSL and routing
+  traefik:
+    image: traefik:v3.0
+    container_name: traefik
+    restart: unless-stopped
+    command:
+      - "--api.insecure=true"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.websecure.address=:443"
+      - "--certificatesresolvers.letsencrypt.acme.tlschallenge=true"
+      - "--certificatesresolvers.letsencrypt.acme.email=${ACME_EMAIL}"
+      - "--certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json"
+      # Redirect HTTP to HTTPS
+      - "--entrypoints.web.http.redirections.entrypoint.to=websecure"
+      - "--entrypoints.web.http.redirections.entrypoint.scheme=https"
+    ports:
+      - "80:80"
+      - "443:443"
+      - "8080:8080"  # Traefik dashboard
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./letsencrypt:/letsencrypt
+    networks:
+      - dockrune-network
+      - deployments
+
+networks:
+  dockrune-network:
+    driver: bridge
+  deployments:
+    driver: bridge
+    name: deployments
+    # This network is shared with deployed applications
+
+volumes:
+  data:
+  logs:
+  repos:

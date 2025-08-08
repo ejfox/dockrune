@@ -1,0 +1,143 @@
+# Git and version control
+.git
+.gitignore
+.github/
+
+# Documentation
+*.md
+CHANGELOG*
+LICENSE*
+docs/
+
+# Development and test files
+.env
+.env.*
+!.env.example
+.venv/
+venv/
+env/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+.hypothesis/
+
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.npm
+.eslintcache
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
+.eggs/
+develop-eggs/
+downloads/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Logs and databases
+*.log
+*.sqlite
+*.db
+
+# Docker
+Dockerfile.*
+docker-compose*.yml
+.dockerignore
+
+# Test fixtures and mocks
+tests/
+__tests__/
+test/
+*.test.js
+*.test.py
+test_*.py
+*_test.py
+jest.config.js
+jest.setup.js
+pytest.ini
+
+# Development tools
+.pre-commit-config.yaml
+.flake8
+.mypy.ini
+setup.cfg
+tox.ini
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Temporary files
+tmp/
+temp/
+.tmp/
+
+# Runtime data that should be mounted as volumes
+data/
+logs/
+projects/
+backups/
+
+# Development overrides
+docker-compose.override.yml
+
+# CI/CD
+.github/
+.gitlab-ci.yml
+.travis.yml
+circle.yml
+appveyor.yml
+
+# Package manager files (keep requirements.txt and package.json)
+Pipfile
+Pipfile.lock
+poetry.lock
+yarn.lock
+
+# Security and secrets
+secrets/
+*.pem
+*.key
+*.crt
+*.csr
+
+# Editor and IDE specific
+*.sublime-*
+*.komodoproject
+.komodotools
+.brackets.json
+*.tmproj
+*.tmproject
+.vscode/
+.idea/
