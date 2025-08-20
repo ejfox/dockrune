@@ -50,6 +50,8 @@ func Load() (*Config, error) {
 	viper.SetDefault("deployment_domain", "localhost")
 
 	// Bind environment variables
+	viper.BindEnv("webhook_port", "WEBHOOK_PORT")
+	viper.BindEnv("admin_port", "ADMIN_PORT")
 	viper.BindEnv("github_token", "GITHUB_TOKEN")
 	viper.BindEnv("webhook_secret", "GITHUB_WEBHOOK_SECRET")
 	viper.BindEnv("discord_webhook_url", "DISCORD_WEBHOOK_URL")
