@@ -75,22 +75,70 @@ go build -o dockrune ./cmd/dockrune
 
 ```bash
 docker run -d \
-  -p 8000:8000 \
-  -p 8001:8001 \
+  -p 9876:9876 \
+  -p 9877:9877 \
   -v /var/run/docker.sock:/var/run/docker.sock \
   -v $(pwd)/data:/app/data \
   -e GITHUB_WEBHOOK_SECRET=your-secret \
+  -e WEBHOOK_PORT=9876 \
+  -e ADMIN_PORT=9877 \
   ejfox/dockrune
 ```
 
-## configure github
+## configure github webhooks
 
-1. go to repo settings → webhooks
-2. add webhook:
-   - url: `https://your-server.com/webhook/github`
-   - content type: `application/json`
-   - secret: your webhook secret
-   - events: push, pull request
+### step 1: set up your webhook secret
+```bash
+# generate a secure webhook secret
+openssl rand -hex 32
+
+# add it to your .env file
+echo "GITHUB_WEBHOOK_SECRET=your-generated-secret-here" >> .env
+```
+
+### step 2: configure github webhook
+
+#### option a: single repository (manual)
+1. go to your repository on GitHub
+2. click **Settings** → **Webhooks** → **Add webhook**
+3. configure the webhook (see settings below)
+
+#### option b: organization-wide (recommended)
+1. go to your GitHub organization settings
+2. click **Settings** → **Webhooks** → **Add webhook**
+3. this webhook will apply to ALL repos in your org automatically
+
+#### option c: automate with gh cli (bulk setup)
+```bash
+# set up webhook for all your repos at once
+gh api user/repos --paginate | jq -r '.[].full_name' | while read repo; do
+  gh api repos/$repo/hooks -X POST -f name=web \
+    -f config[url]=https://your-server.com:9876/webhook/github \
+    -f config[secret]=your-webhook-secret \
+    -f config[content_type]=json \
+    -F events[]=push
+  echo "✅ Added webhook to $repo"
+done
+```
+
+#### webhook settings (for any option above):
+- **Payload URL**: `https://your-server.com:9876/webhook/github`
+- **Content type**: `application/json`
+- **Secret**: paste your webhook secret from step 1
+- **Which events**: select "Just the push event"
+- **Active**: ✅ checked
+
+### step 3: test the webhook
+```bash
+# make any commit and push to main branch
+git add . && git commit -m "test webhook" && git push origin main
+
+# check dockrune logs to see deployment
+tail -f logs/dockrune.log
+```
+
+**webhook endpoint**: your dockrune server will receive webhooks at `/webhook/github`  
+**admin dashboard**: access at `https://your-server.com:9877` for deployment monitoring
 
 ## env vars
 
@@ -104,13 +152,15 @@ GITHUB_TOKEN=             # for private repos
 DISCORD_WEBHOOK_URL=      # optional alerts
 ```
 
-## api
+## api endpoints
 
-- webhook: `:8000/webhook/github`
-- health: `:8000/health`
-- admin: `:8001`
-- openapi: `:8001/openapi.json`
-- deployments: `:8001/api/deployments` (jwt required)
+- **webhook**: `:9876/webhook/github` (receives GitHub webhooks)
+- **health**: `:9876/health` (server health check)
+- **admin dashboard**: `:9877/` (web interface)
+- **openapi spec**: `:9877/openapi.json` (api documentation)
+- **deployments api**: `:9877/api/deployments` (jwt auth required)
+
+**note**: ports are configurable via `WEBHOOK_PORT` and `ADMIN_PORT` environment variables
 
 ## zero config: how it works
 
